@@ -1,97 +1,130 @@
 import React, { useState, useRef } from "react";
-import { icons } from "../components/icons";
+import { icons } from "../components/icons.jsx";
 
+/**
+ * Component Trang chủ (Ảnh 4.png)
+ * Nhận `mutation` object từ App.jsx
+ */
 export default function HomePage({ mutation }) {
-  const { mutate, isLoading, isError, error } = mutation;
+  const { mutate, isPending: isLoading, isError, error } = mutation; // Sửa: v5 dùng isPending
+
+  // `SummarizePage` state từ sơ đồ UML
   const [textInput, setTextInput] = useState("");
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState(null); // 'file'
   const fileInputRef = useRef(null);
 
+  // 'onFileChange'
   const handleFileChange = (e) => {
-    if (e.target.files[0]) {
-      setFile(e.target.files[0]);
-      setTextInput("");
+    if (e.target.files && e.target.files[0]) {
+      const uploadedFile = e.target.files[0];
+      setFile(uploadedFile);
+      setTextInput(""); // Xóa text input khi đã chọn file
     }
   };
 
+  // 'handleSubmit'
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!textInput.trim() && !file) return alert("Nhập văn bản hoặc tải file!");
-    mutate({ textInput, file, userId: 123, modelId: 1 });
+    if (!textInput.trim() && !file) {
+      // alert đã bị vô hiệu hóa, dùng console.error
+      console.error("Vui lòng nhập văn bản hoặc tải lên một tệp.");
+      return;
+    }
+
+    // Kích hoạt mutation (gọi hook)
+    // payload này sẽ được gửi đến `summarizeApi`
+    mutate({
+      textInput: textInput,
+      file: file,
+      userId: 1, // Tạm gán cứng, sẽ lấy từ context
+      modelId: 1, // Tạm gán cứng, sẽ lấy từ dropdown
+    });
   };
 
+  // Logic kích hoạt nút submit ('btnSubmit')
+  const canSubmit = (textInput.trim() !== "" || file !== null) && !isLoading;
+
   return (
-    <div className="flex flex-col items-center justify-center h-full px-4">
-      <h1 className="text-4xl font-bold text-gray-300 mb-8 text-center">
+    <div className="homepage-container">
+      <h1 className="homepage-title">
         Tóm tắt văn bản đơn giản hơn với 1 click
       </h1>
 
-      <form onSubmit={handleSubmit} className="w-full max-w-3xl">
-        <div className="relative flex items-center">
-          <span className="absolute left-0 pl-5">
-            {React.createElement(icons.plus, {
-              className: "w-7 h-7 text-gray-400",
-            })}
-          </span>
+      {/* Input file ẩn */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        style={{ display: "none" }} // ẩn đi
+        accept=".txt,.pdf,.docx" // Giới hạn loại file (tùy chọn)
+      />
+
+      {/* Thanh nhập liệu chính */}
+      <form onSubmit={handleSubmit} className="summary-form">
+        <div className="input-container">
+          {/* Nút 'tải file' */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current.click()}
+            className="file-upload-button"
+            title="Tải tệp lên"
+          >
+            {icons.paperclip({ className: "file-upload-icon" })}
+          </button>
+
+          {/* Ô 'textInput' */}
           <input
             type="text"
             value={textInput}
             onChange={(e) => {
               setTextInput(e.target.value);
-              if (e.target.value) setFile(null);
+              if (e.target.value) setFile(null); // Xóa file nếu người dùng gõ text
             }}
-            placeholder={file ? file.name : "Nhập văn bản tại đây"}
-            disabled={!!file}
-            className="w-full h-20 pl-16 pr-24 py-4 text-xl text-gray-200 bg-gray-700 border rounded-full focus:ring-2 focus:ring-indigo-500"
+            placeholder={file ? file.name : "Nhập văn bản, tóm tắt tại đây"}
+            disabled={file !== null} // Vô hiệu hóa gõ text nếu đã chọn file
+            className="text-input"
           />
+
+          {/* Nút 'btnSubmit' */}
           <button
             type="submit"
-            disabled={isLoading}
-            className="absolute right-0 mr-4 w-14 h-14 bg-indigo-600 rounded-full flex items-center justify-center text-white hover:bg-indigo-500"
+            disabled={!canSubmit}
+            className="submit-button"
+            title="Tóm tắt"
           >
             {isLoading ? (
+              // Icon loading xoay
               <svg
-                className="animate-spin h-6 w-6 text-white"
+                className="loading-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
                 viewBox="0 0 24 24"
               >
                 <circle
+                  style={{ opacity: 0.25 }}
                   cx="12"
                   cy="12"
                   r="10"
                   stroke="currentColor"
                   strokeWidth="4"
-                />
-                <path fill="currentColor" d="M4 12a8 8 0 018-8V0" />
+                ></circle>
+                <path
+                  style={{ opacity: 0.75 }}
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
               </svg>
             ) : (
-              React.createElement(icons.arrowUp, { className: "w-7 h-7" })
+              icons.arrowUp({ className: "submit-icon" })
             )}
           </button>
         </div>
       </form>
 
-      <div className="mt-4">
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          className="hidden"
-          accept=".txt,.pdf,.docx"
-        />
-        <button
-          onClick={() => fileInputRef.current.click()}
-          className="flex items-center px-4 py-2 bg-gray-700 text-indigo-300 rounded-full hover:bg-gray-600"
-        >
-          {React.createElement(icons.paperclip, { className: "w-5 h-5 mr-2" })}
-          {file
-            ? `Đã chọn: ${file.name}`
-            : "hoặc Tải tệp lên (.txt, .pdf, .docx)"}
-        </button>
-      </div>
-
+      {/* Hiển thị lỗi nếu có */}
       {isError && (
-        <div className="mt-4 text-red-400 bg-red-900 border border-red-700 px-4 py-2 rounded-lg">
-          Lỗi: {error?.message || "Không thể kết nối đến máy chủ."}
+        <div className="error-message">
+          Lỗi: {error.message || "Không thể kết nối đến máy chủ."}
         </div>
       )}
     </div>
